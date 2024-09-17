@@ -1,0 +1,357 @@
+---
+title: "Code"
+output: html_document
+date: "2024-09-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(fs)
+library(readxl)
+library(scales)
+library(showtext)
+library(lubridate)
+library(zoo)
+library(gridExtra)
+
+library(tidyverse)
+library(rio)
+library(ggridges)
+library(ggpattern)
+library(ggdist)
+library(ggbeeswarm)
+library(ggstream)
+library(ggpubr)
+library(scales)
+library(knitr)
+library(reactable)
+library(htmltools)
+library(zoo)
+library(quantmod)
+library(PerformanceAnalytics)
+library(quadprog)
+library(janitor)
+library(stringi)
+library(car)
+
+
+```
+
+```{r}
+font_add_google("Open Sans")
+showtext_auto()
+
+# Define theme_reason based on the uploaded file
+theme_reason <- function(base_line_size = 0.5,
+                         base_family = "Open Sans",
+                         base_size = 12) {
+  theme_minimal(base_family = base_family,
+                base_size = base_size,
+                base_line_size = base_line_size) %+replace%
+    theme(
+      axis.ticks = element_line(),
+      panel.grid = element_blank(),
+      panel.grid.major.y = element_line(color = "grey92"),
+      legend.position = "top"
+    )
+}
+
+C1 <- "#CC0100"  # Light orange 
+C2 <- "#66BB8B"  # Mid-tone orange
+C3 <- "#FF6733"  # Warm orange
+C4 <- "#2F456B"  # Lighter orange
+C5 <- "#A69FA1"  # Pale orange
+C6 <- "#F6B941"  # Yellow-orange
+C7 <- "#2779CB"  # Bright orange
+
+reason_colors <- c(C1, C2, C3, C4, C5, C6, C7)
+
+```
+
+```{r}
+combined_data_clean <- read.csv("combined_data_clean.csv")
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+data_2022 <- combined_data_clean %>%
+  filter(fye >= as.Date("2022-01-01") & fye <= as.Date("2022-12-31"))
+
+# Calculate the number of plans that file in each fiscal year-end month for 2022
+plan_counts_2022 <- data_2022 %>%
+  group_by(month) %>%
+  summarise(plan_count = n_distinct(plan))  # Count distinct pension plans per month
+
+# Create a bar chart displaying the number of plans per fiscal year-end month
+Bars <- ggplot(plan_counts_2022, aes(x = as.factor(month), y = plan_count, fill = as.factor(month))) +
+  geom_bar(stat = "identity", show.legend = FALSE) +  # Bar chart
+  scale_fill_manual(values = reason_colors) +  # Assign the colors to each month
+  labs(x = "Fiscal Year-End Month", y = "Number of Pension Plans", 
+       title = "Number of Pension Plans Filing by Fiscal Year-End Month (2022)") +
+  theme_reason()  # Clean theme for the chart
+
+Bars
+
+ggsave("outputs/Bars.png", plot = Bars, width = 16, height = 7)
+
+```
+
+```{r}
+
+plan_counts_2022 <- data_2022 %>%
+  group_by(month) %>%
+  summarise(plan_count = n_distinct(plan))  # Count distinct pension plans per month
+
+# Calculate total number of plans in 2022
+total_plans_2022 <- sum(plan_counts_2022$plan_count)
+
+# Calculate the percentage of plans filing in each month
+plan_counts_2022 <- plan_counts_2022 %>%
+  mutate(percentage = (plan_count / total_plans_2022) * 100)
+
+# Display the table with fiscal year-end month and percentage of total plans
+plan_counts_2022 %>% 
+  arrange(month) %>% 
+  knitr::kable(col.names = c("Fiscal Year-End Month", "Number of Plans", "Percentage of Total Plans"))
+
+
+```
+
+
+
+
+```{r}
+return_national_fye <- combined_data_clean %>%
+  filter(!is.na(mva)) %>%
+  group_by(month, fye) %>%
+  summarise(
+    national_return = weighted.mean(return, w = mva, na.rm = TRUE),
+    national_ARR = weighted.mean(arr, w = mva, na.rm = TRUE),
+    .groups = "drop"  # Override the default grouping behavior
+  ) %>%
+  group_by(month) %>%
+  # Calculate compound (geometric) return by fiscal year-end month
+  mutate(
+    avg_compound_return = prod(1 + national_return)^(1 / n()) - 1
+  ) %>%
+  ungroup()
+
+return_national_fye <- return_national_fye %>%
+  mutate(fye = as.Date(fye))  # Convert 'fye' to Date format
+
+```
+
+```{r}
+# Plot national_return over fye by month
+ggplot(return_national_fye, aes(x = fye, y = national_return)) +
+  geom_line(aes(col = as.factor(month), group = as.factor(month)), linewidth = 1) +
+  scale_y_continuous(
+    labels = scales::percent_format(),
+    breaks = scales::pretty_breaks(10)
+  ) +
+  scale_x_date(
+    breaks = pretty_breaks(n = 10),  # Automatically select breaks for the date range
+    date_labels = "%Y",  # Display only the year in the x-axis labels
+    guide = guide_axis(angle = 90)
+  ) +
+  labs(x = "Fiscal Year-End", y = "National Return", col = "FY End Month") +
+  theme_minimal()  # Use a simple minimal theme
+
+```
+
+```{r}
+return_10yr_filtered <- return_national_fye %>%
+  filter(fye >= as.Date("2013-01-01") & fye <= as.Date("2022-12-31"))
+
+return_20yr_filtered <- return_national_fye %>%
+  filter(fye >= as.Date("2002-01-01") & fye <= as.Date("2022-12-31"))
+
+# Recalculate the overall 10-year and 20-year average return for the filtered data
+overall_avg_10yr <- return_10yr_filtered %>%
+  group_by(month) %>%
+  summarise(avg_10yr = mean(national_return, na.rm = TRUE))
+
+overall_avg_20yr <- return_20yr_filtered %>%
+  group_by(month) %>%
+  summarise(avg_20yr = mean(national_return, na.rm = TRUE))
+
+# Calculate the overall averages across all months
+overall_avg_10yr_all <- mean(overall_avg_10yr$avg_10yr, na.rm = TRUE)
+overall_avg_20yr_all <- mean(overall_avg_20yr$avg_20yr, na.rm = TRUE)
+
+# Print the overall averages
+print(paste("Overall 10-Year Average Return (2013-2022):", round(overall_avg_10yr_all * 100, 2), "%"))
+print(paste("Overall 20-Year Average Return (2002-2022):", round(overall_avg_20yr_all * 100, 2), "%"))
+
+
+```
+
+```{r}
+
+plot_20yr <- ggplot(overall_avg_20yr, aes(x = as.factor(month), y = avg_20yr)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_hline(yintercept = overall_avg_20yr_all, color = "black", linetype = "dashed", size = 1) +  # Add overall average line
+  annotate("text", x = Inf, y = overall_avg_20yr_all, label = paste("Avg:", round(overall_avg_20yr_all * 100, 2), "%"), 
+           vjust = -0.5, hjust = 1.2, size = 5, color = "black", fontface = "bold") +  # Add text for overall average
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(x = "Month", y = "20-Year Average Return (2002-2022)", title = "20-Year Average Return by Month") +
+  theme_reason()
+
+# Plot for 10-year average returns by month with overall average line and label
+plot_10yr <- ggplot(overall_avg_10yr, aes(x = as.factor(month), y = avg_10yr)) +
+  geom_bar(stat = "identity", fill = "orange") +
+  geom_hline(yintercept = overall_avg_10yr_all, color = "black", linetype = "dashed", size = 1) +  # Add overall average line
+  annotate("text", x = Inf, y = overall_avg_10yr_all, label = paste("Avg:", round(overall_avg_10yr_all * 100, 2), "%"), 
+           vjust = -0.5, hjust = 1.2, size = 5, color = "black", fontface = "bold") +  # Add text for overall average
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = reason_colors) + 
+  labs(x = "Month", y = "10-Year Average Return (2013-2022)", title = "10-Year Average Return by Month") +
+  theme_reason()
+
+
+grid.arrange(plot_20yr, plot_10yr, ncol = 2)
+
+
+```
+
+
+```{r}
+return_plan_01_23 <- combined_data_clean %>%
+  group_by(plan) %>%
+  summarise(avg_return = prod(1 + return_ppd)^(1 / n()) - 1,  # Calculate geometric mean for each plan
+            month = mean(month))  # Get the mean fiscal year-end month for each plan
+
+# Create the dot plot with intervals and display the mean values
+D23 <- ggplot(return_plan_01_23, aes(x = as.factor(round(month)), y = avg_return, fill = as.factor(round(month)))) +
+  stat_dotsinterval(slab_linewidth = 0, 
+                    side = "both", 
+                    binwidth = 0.0011,  # Adjust binwidth for spacing between dots
+                    .width = c(0.50),
+                    show.legend = FALSE) +
+  scale_y_continuous(labels = scales::percent_format(),  # Format y-axis as percentages
+                     breaks = scales::pretty_breaks(10)) +
+  scale_fill_manual(values = reason_colors) +  # Apply the custom colors to the 'fill' aesthetic
+  labs(x = "FY End Months", y = "'01-'23 Average Returns", 
+       caption = "Public Pension Average Returns (22-Year) Distribution By FY End Months") +
+  theme_reason()
+
+D23
+
+ggsave("outputs/D23.png", plot = D23, width = 16, height = 7)
+
+```
+
+
+```{r}
+data_2022 <- combined_data_clean %>%
+  filter(fye >= as.Date("2022-01-01") & fye <= as.Date("2022-12-31"))
+
+# Calculate the average return per plan for 2022 and the fiscal year-end month
+return_plan_22 <- data_2022 %>%
+  group_by(plan) %>%
+  summarise(avg_return = prod(1 + return_ppd)^(1 / n()) - 1,  # Calculate geometric mean for each plan
+            month = mean(month))  # Get the mean fiscal year-end month for each plan
+
+D22 <- ggplot(return_plan_22, aes(x = as.factor(round(month)), y = avg_return, fill = as.factor(round(month)))) +
+  stat_dotsinterval(slab_linewidth = 0, 
+                    side = "both", 
+                    binwidth = 0.009,  # Adjust binwidth for spacing between dots
+                    .width = c(0.50),
+                    show.legend = FALSE) +
+  scale_y_continuous(labels = scales::percent_format(),  # Format y-axis as percentages
+                     breaks = scales::pretty_breaks(10)) +
+  scale_fill_manual(values = reason_colors) +  # Apply the custom colors to the 'fill' aesthetic
+  labs(x = "Fiscal Year-End Months", y = "2022 Average Returns", 
+       caption = "Public Pension 2022 Return Distribution By FY End Months") +
+  theme_reason()
+
+D22
+
+ggsave("outputs/D22.png", plot = D22, width = 16, height = 7)
+
+```
+
+```{r}
+
+
+common_y_limits <- c(-0.15, 0.22)  # Adjust the range based on your data, this is just an example
+
+# Plot for 2001-2023 Average Returns
+D23_2 <- ggplot(return_plan_22, aes(x = as.factor(round(month)), y = avg_return, color = as.factor(round(month)))) +
+  geom_point(size = 1, alpha = 0.4) +  # Scatter plot for each plan
+  scale_y_continuous(labels = scales::percent_format(),  # Format y-axis as percentages
+                     breaks = scales::pretty_breaks(10),
+                     limits = common_y_limits) +  # Set common y-axis limits
+  scale_fill_manual(values = reason_colors) +  # Apply the custom colors to the 'fill' aesthetic
+  labs(x = "", y = "'01-'23 Average Returns", 
+       caption = "Public Pension Average Returns (22-Year) Distribution By FY End Months") +
+  theme_reason()
+
+# Plot for 2022 Average Returns
+D22_2 <- ggplot(return_plan_01_23, aes(x = as.factor(round(month)), y = avg_return, color = as.factor(round(month)))) +
+  geom_point(size = 1, alpha = 0.4) +  # 
+  scale_y_continuous(labels = scales::percent_format(),  # Format y-axis as percentages
+                     breaks = scales::pretty_breaks(10),
+                     limits = common_y_limits) +  # Set common y-axis limits
+  scale_fill_manual(values = reason_colors) +  # Apply the custom colors to the 'fill' aesthetic
+  labs(x = "", y = "2022 Average Returns", 
+       caption = "Public Pension 2022 Return Distribution By FY End Months") +
+  theme_reason()
+
+# Save the individual plots
+ggsave("outputs/D23_2.png", plot = D23_2, width = 16, height = 20)
+ggsave("outputs/D22_2.png", plot = D22_2, width = 16, height = 20)
+
+# Arrange both plots in a grid
+combined_plot <- grid.arrange(D23_2, D22_2, ncol = 2)
+
+ggsave("outputs/combined_plot.png", plot = combined_plot, width = 16, height = 16)
+
+```
+
+```{r}
+
+combined_plot2 <- grid.arrange(D22, D23, ncol = 2)
+
+ggsave("outputs/combined_plot2.png", plot = combined_plot2, width = 30, height = 16)
+
+```
+
+
+```{r}
+
+anova_2022 <- aov(avg_return ~ as.factor(month), data = return_plan_22)
+summary(anova_2022)
+
+# If you want to check assumptions, like homogeneity of variances (Levene's Test)
+leveneTest(avg_return ~ as.factor(month), data = return_plan_22)
+
+# Post-hoc test to identify specific differences between months
+TukeyHSD(anova_2022)
+
+```
+
+
+
+```{r}
+
+anova_01_23 <- aov(avg_return ~ as.factor(month), data = return_plan_01_23)
+summary(anova_01_23)
+
+# Check homogeneity of variances for 2001-2023 average returns
+leveneTest(avg_return ~ as.factor(month), data = return_plan_01_23)
+
+# Post-hoc test for specific differences between months for 2001-2023 data
+TukeyHSD(anova_01_23)
+
+```
+
+
