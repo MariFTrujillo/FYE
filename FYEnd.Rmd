@@ -5,7 +5,6 @@ date: "2024-09-06"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
 library(dplyr)
 library(fs)
@@ -35,7 +34,11 @@ library(quadprog)
 library(janitor)
 library(stringi)
 library(car)
+library(ggplot2)
+library(dplyr)
+library(ggdist)
 
+knitr::opts_chunk$set(echo = TRUE)
 
 ```
 
@@ -104,6 +107,10 @@ ggsave("outputs/Bars.png", plot = Bars, width = 16, height = 7)
 
 ```
 
+
+
+
+
 ```{r}
 
 plan_counts_2022 <- data_2022 %>%
@@ -168,6 +175,10 @@ ggplot(return_national_fye, aes(x = fye, y = national_return)) +
 ```
 
 ```{r}
+
+return_national_fye <- return_national_fye %>%
+  filter(!is.na(national_return), !is.na(fye))
+
 return_10yr_filtered <- return_national_fye %>%
   filter(fye >= as.Date("2013-01-01") & fye <= as.Date("2022-12-31"))
 
@@ -222,6 +233,73 @@ grid.arrange(plot_20yr, plot_10yr, ncol = 2)
 
 ```
 
+```{r}
+average_returns_summary <- overall_avg_10yr %>%
+  rename("10-Year Avg Return" = avg_10yr) %>%
+  left_join(overall_avg_20yr %>% rename("20-Year Avg Return" = avg_20yr), by = "month") %>%
+  mutate(
+    `10-Year Avg Return` = round(`10-Year Avg Return` * 100, 2),
+    `20-Year Avg Return` = round(`20-Year Avg Return` * 100, 2)
+  )
+
+# Display the combined table with fiscal year-end month, 10-year and 20-year average returns
+average_returns_summary %>%
+  arrange(month) %>%
+  knitr::kable(col.names = c("Fiscal Year-End Month", "10-Year Average Return (%)", "20-Year Average Return (%)"),
+               format = "html",
+               caption = "Average Returns per Fiscal Year-End Month (10-Year and 20-Year Basis)") %>%
+  kableExtra::kable_styling("striped", full_width = F)  # Optional styling for better visualization
+
+
+```
+
+
+```{r}
+total_average_returns <- data.frame(
+  "Total Average Return (10-Year)" = round(overall_avg_10yr_all * 100, 2),
+  "Total Average Return (20-Year)" = round(overall_avg_20yr_all * 100, 2)
+)
+
+# Convert to a more readable format for display
+total_average_returns <- total_average_returns %>%
+  mutate(across(everything(), ~paste0(., " %")))  # Append percentage sign
+
+# Display the total average returns table
+total_average_returns %>%
+  knitr::kable(col.names = c("Total Average Return (10-Year)", "Total Average Return (20-Year)"),
+               format = "html",
+               caption = "Total Average Returns (10-Year and 20-Year Basis Across All Fiscal Year Ends)") %>%
+  kableExtra::kable_styling("striped", full_width = F)  # Optional styling for better visualization
+
+
+```
+
+```{r}
+
+# Filter data for the year 2022
+data_2022 <- combined_data_clean %>%
+  filter(fye >= as.Date("2022-01-01") & fye <= as.Date("2022-12-31"))
+
+# Calculate the mean return for each fiscal year-end month
+mean_returns_by_month <- data_2022 %>%
+  group_by(month) %>%
+  summarise(mean_return = mean(return, na.rm = TRUE)) %>%  # Calculate the mean return for each month
+  mutate(mean_return = round(mean_return * 100, 2))  # Convert to percentage and round to 2 decimal places
+
+# Calculate the arithmetic average of returns for the entire fiscal year 2022
+arithmetic_avg_return_2022 <- data_2022 %>%
+  summarise(arithmetic_avg_return = mean(return, na.rm = TRUE)) %>%
+  mutate(arithmetic_avg_return = round(arithmetic_avg_return * 100, 2))
+
+# Print the table using base R print function
+print(mean_returns_by_month)
+
+# Print the arithmetic average return for fiscal year 2022
+print(arithmetic_avg_return_2022)
+
+```
+
+
 
 ```{r}
 return_plan_01_23 <- combined_data_clean %>%
@@ -254,12 +332,12 @@ ggsave("outputs/D23.png", plot = D23, width = 16, height = 7)
 data_2022 <- combined_data_clean %>%
   filter(fye >= as.Date("2022-01-01") & fye <= as.Date("2022-12-31"))
 
-# Calculate the average return per plan for 2022 and the fiscal year-end month
 return_plan_22 <- data_2022 %>%
   group_by(plan) %>%
-  summarise(avg_return = prod(1 + return_ppd)^(1 / n()) - 1,  # Calculate geometric mean for each plan
-            month = mean(month))  # Get the mean fiscal year-end month for each plan
+  summarise(avg_return = mean(return, na.rm = TRUE),  # Calculate arithmetic mean for each plan
+            month = mean(month, na.rm = TRUE))  # Get the mean fiscal year-end month for each plan
 
+# Create the dot plot for 2022 average returns using arithmetic mean
 D22 <- ggplot(return_plan_22, aes(x = as.factor(round(month)), y = avg_return, fill = as.factor(round(month)))) +
   stat_dotsinterval(slab_linewidth = 0, 
                     side = "both", 
@@ -279,51 +357,73 @@ ggsave("outputs/D22.png", plot = D22, width = 16, height = 7)
 
 ```
 
+
+```{r}
+average_returns_2022 <- return_plan_22 %>%
+  group_by(month) %>%
+  summarise(avg_return = mean(avg_return, na.rm = TRUE)) %>%  # Calculate arithmetic mean for each month
+  mutate(avg_return = round(avg_return * 100, 2))  # Convert to percentage and round
+
+# Display the average returns table for fiscal year 2022
+print(average_returns_2022)
+
+# Calculate overall average return for FY 2022 using arithmetic mean
+overall_avg_return_2022 <- mean(average_returns_2022$avg_return, na.rm = TRUE)
+print(paste("Overall Average Return for FY 2022:", round(overall_avg_return_2022, 2), "%"))
+```
+
+```{r}
+library(kableExtra)
+
+data_2022 <- combined_data_clean %>%
+  filter(fye >= as.Date("2022-01-01") & fye <= as.Date("2022-12-31"))
+
+# Calculate the mean return for each fiscal year-end month
+mean_returns_by_month <- data_2022 %>%
+  group_by(month) %>%
+  summarise(mean_return = mean(return, na.rm = TRUE)) %>%  # Calculate the mean return for each month
+  mutate(mean_return = round(mean_return * 100, 2))  # Convert to percentage and round to 2 decimal places
+
+# Print the table using kable for better formatting
+mean_returns_by_month %>%
+  kable(col.names = c("Fiscal Year-End Month", "Mean Return (%)"),
+        caption = "Mean Returns by Fiscal Year-End Month for 2022") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = F)
+
+```
+  
+
 ```{r}
 
+data_2022 <- combined_data_clean %>%
+  filter(fye >= as.Date("2022-01-01") & fye <= as.Date("2022-12-31"))
 
-common_y_limits <- c(-0.15, 0.22)  # Adjust the range based on your data, this is just an example
+return_plan_22 <- data_2022 %>%
+  group_by(plan) %>%
+  summarise(avg_return = mean(return_ppd, na.rm = TRUE),  # Calculate arithmetic mean for each plan
+            month = mean(month, na.rm = TRUE))  # Get the mean fiscal year-end month for each plan
 
-# Plot for 2001-2023 Average Returns
-D23_2 <- ggplot(return_plan_22, aes(x = as.factor(round(month)), y = avg_return, color = as.factor(round(month)))) +
-  geom_point(size = 1, alpha = 0.4) +  # Scatter plot for each plan
+# Create the dot plot for 2022 average returns using arithmetic mean
+D22 <- ggplot(return_plan_22, aes(x = as.factor(round(month)), y = avg_return, fill = as.factor(round(month)))) +
+  stat_dotsinterval(slab_linewidth = 0, 
+                    side = "both", 
+                    binwidth = 0.009,  # Adjust binwidth for spacing between dots
+                    .width = c(0.50),
+                    show.legend = FALSE) +
   scale_y_continuous(labels = scales::percent_format(),  # Format y-axis as percentages
-                     breaks = scales::pretty_breaks(10),
-                     limits = common_y_limits) +  # Set common y-axis limits
+                     breaks = scales::pretty_breaks(10)) +
   scale_fill_manual(values = reason_colors) +  # Apply the custom colors to the 'fill' aesthetic
-  labs(x = "", y = "'01-'23 Average Returns", 
-       caption = "Public Pension Average Returns (22-Year) Distribution By FY End Months") +
-  theme_reason()
-
-# Plot for 2022 Average Returns
-D22_2 <- ggplot(return_plan_01_23, aes(x = as.factor(round(month)), y = avg_return, color = as.factor(round(month)))) +
-  geom_point(size = 1, alpha = 0.4) +  # 
-  scale_y_continuous(labels = scales::percent_format(),  # Format y-axis as percentages
-                     breaks = scales::pretty_breaks(10),
-                     limits = common_y_limits) +  # Set common y-axis limits
-  scale_fill_manual(values = reason_colors) +  # Apply the custom colors to the 'fill' aesthetic
-  labs(x = "", y = "2022 Average Returns", 
+  labs(x = "Fiscal Year-End Months", y = "2022 Average Returns", 
        caption = "Public Pension 2022 Return Distribution By FY End Months") +
   theme_reason()
 
-# Save the individual plots
-ggsave("outputs/D23_2.png", plot = D23_2, width = 16, height = 20)
-ggsave("outputs/D22_2.png", plot = D22_2, width = 16, height = 20)
+D22
 
-# Arrange both plots in a grid
-combined_plot <- grid.arrange(D23_2, D22_2, ncol = 2)
+ggsave("outputs/D22.png", plot = D22, width = 16, height = 7)
 
-ggsave("outputs/combined_plot.png", plot = combined_plot, width = 16, height = 16)
 
 ```
 
-```{r}
-
-combined_plot2 <- grid.arrange(D22, D23, ncol = 2)
-
-ggsave("outputs/combined_plot2.png", plot = combined_plot2, width = 30, height = 16)
-
-```
 
 
 ```{r}
