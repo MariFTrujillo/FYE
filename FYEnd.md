@@ -9,49 +9,10 @@ output:
 date: "2024-09-06"
 ---
 
-```{r setup, include=FALSE}
-
-rm(list = ls())
 
 
-library(ggplot2)
-library(dplyr)
-library(fs)
-library(readxl)
-library(scales)
-library(showtext)
-library(lubridate)
-library(zoo)
-library(gridExtra)
-library(tinytex)
-library(tidyverse)
-library(rio)
-library(ggridges)
-library(ggpattern)
-library(ggdist)
-library(ggbeeswarm)
-library(ggstream)
-library(ggpubr)
-library(scales)
-library(knitr)
-library(reactable)
-library(htmltools)
-library(zoo)
-library(quantmod)
-library(PerformanceAnalytics)
-library(quadprog)
-library(janitor)
-library(stringi)
-library(car)
-library(ggplot2)
-library(dplyr)
-library(ggdist)
 
-knitr::opts_chunk$set(echo = TRUE)
-
-```
-
-```{r}
+``` r
 font_add_google("Open Sans")
 showtext_auto()
 
@@ -79,24 +40,22 @@ C6 <- "#F6B941"  # Yellow-orange
 C7 <- "#2779CB"  # Bright orange
 
 reason_colors <- c(C1, C2, C3, C4, C5, C6, C7)
-
 ```
 
-```{r}
+
+``` r
 combined_data_clean <- read.csv("combined_data_clean.csv")
-
 ```
 
 
-```{r}
 
-```
 
 # 1 The Disparity in Fiscal Years 
 
 # 1.1 Figure 1: Number of Plans filing in each fiscal year end month
 
-```{r}
+
+``` r
 data_2022 <- combined_data_clean %>%
   filter(fye >= as.Date("2022-01-01") & fye <= as.Date("2022-12-31"))
 
@@ -114,17 +73,20 @@ Bars <- ggplot(plan_counts_2022, aes(x = as.factor(month), y = plan_count, fill 
   theme_reason()  # Clean theme for the chart
 
 Bars
+```
 
+![](FYEnd_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+
+``` r
 ggsave("outputs/Bars.png", plot = Bars, width = 16, height = 7)
-
 ```
 
 
 
 
 
-```{r}
 
+``` r
 plan_counts_2022 <- data_2022 %>%
   group_by(month) %>%
   summarise(plan_count = n_distinct(plan))  # Count distinct pension plans per month
@@ -140,15 +102,26 @@ plan_counts_2022 <- plan_counts_2022 %>%
 plan_counts_2022 %>% 
   arrange(month) %>% 
   knitr::kable(col.names = c("Fiscal Year-End Month", "Number of Plans", "Percentage of Total Plans"))
-
-
 ```
+
+
+
+| Fiscal Year-End Month| Number of Plans| Percentage of Total Plans|
+|---------------------:|---------------:|-------------------------:|
+|                     3|               2|                 0.6779661|
+|                     4|               4|                 1.3559322|
+|                     6|             197|                66.7796610|
+|                     7|               4|                 1.3559322|
+|                     8|               5|                 1.6949153|
+|                     9|              17|                 5.7627119|
+|                    12|              66|                22.3728814|
 
 
 # 2. 2022 Returns by Fiscal Year End Month Cohort 
 
 # 2.2. 2022: Average Returns by Month End
-```{r}
+
+``` r
 data_2022_2 <- combined_data_clean %>%
   filter(fye >= as.Date("2022-01-01") & fye <= as.Date("2022-12-31"))
 
@@ -163,27 +136,72 @@ mean_returns_by_month %>%
   knitr::kable(col.names = c("Fiscal Year-End Month", "Mean Return (%)"),
                caption = "Mean Returns by Fiscal Year-End Month for 2022",
                format = "latex")  # or omit `format` to be compatible with both
+```
 
+\begin{table}
+
+\caption{\label{tab:unnamed-chunk-6}Mean Returns by Fiscal Year-End Month for 2022}
+\centering
+\begin{tabular}[t]{r|r}
+\hline
+Fiscal Year-End Month & Mean Return (\%)\\
+\hline
+3 & 9.51\\
+\hline
+4 & -3.29\\
+\hline
+6 & -5.56\\
+\hline
+7 & -9.26\\
+\hline
+8 & -4.69\\
+\hline
+9 & -11.79\\
+\hline
+12 & -10.84\\
+\hline
+\end{tabular}
+\end{table}
+
+``` r
 # Print the mean returns by month
 print(mean_returns_by_month)
 ```
 
+```
+## # A tibble: 7 × 2
+##   month mean_return
+##   <int>       <dbl>
+## 1     3        9.51
+## 2     4       -3.29
+## 3     6       -5.56
+## 4     7       -9.26
+## 5     8       -4.69
+## 6     9      -11.8 
+## 7    12      -10.8
+```
+
 # 2.3. Average 2022 Return For all Plans
 
-```{r}
+
+``` r
 overall_avg_return_2022 <- data_2022 %>%
   summarise(arithmetic_avg_return = mean(return, na.rm = TRUE)) %>%
   mutate(arithmetic_avg_return = round(arithmetic_avg_return * 100, 2))
 
 # Print the overall average return for the fiscal year 2022
 print(paste("Overall Average Return for FY 2022:", overall_avg_return_2022$arithmetic_avg_return, "%"))
+```
 
+```
+## [1] "Overall Average Return for FY 2022: -6.89 %"
 ```
 
 
 # 2.4. Figure 2: Distribution of 2022 Returns by Fiscal Year End Month Cohort
 
-```{r}
+
+``` r
 data_2022 <- combined_data_clean %>%
   filter(fye >= as.Date("2022-01-01") & fye <= as.Date("2022-12-31"))
 
@@ -206,16 +224,29 @@ D22 <- ggplot(return_plan_22, aes(x = as.factor(round(month)), y = avg_return, f
   theme_reason()
 
 D22
+```
 
+```
+## Warning: Removed 13 rows containing missing values or values outside the scale range
+## (`stat_slabinterval()`).
+```
+
+![](FYEnd_files/figure-html/unnamed-chunk-8-1.png)<!-- -->
+
+``` r
 ggsave("outputs/D22.png", plot = D22, width = 16, height = 7)
+```
 
+```
+## Warning: Removed 13 rows containing missing values or values outside the scale range
+## (`stat_slabinterval()`).
 ```
 # 3. Long Run Returns by Fiscal Year End Monrh Cohort 
 
 # 3.1 Average 10 and 20 year Returns For All plans  
 
-```{r}
 
+``` r
 return_national_fye <- combined_data_clean %>%
   filter(!is.na(mva)) %>%
   group_by(month, fye) %>%
@@ -250,16 +281,25 @@ overall_geo_avg_20yr_all <- prod(1 + overall_geo_avg_20yr$geo_avg_20yr)^(1 / nro
 
 # Print the overall geometric averages
 print(paste("Overall 10-Year Geometric Average Return (2013-2022):", round(overall_geo_avg_10yr_all * 100, 2), "%"))
+```
+
+```
+## [1] "Overall 10-Year Geometric Average Return (2013-2022): 8.09 %"
+```
+
+``` r
 print(paste("Overall 20-Year Geometric Average Return (2002-2022):", round(overall_geo_avg_20yr_all * 100, 2), "%"))
+```
 
-
+```
+## [1] "Overall 20-Year Geometric Average Return (2002-2022): 6.72 %"
 ```
 
 
 # 3.2 Figure 3: 10 & 20-Year Average Public Pension Returns By Fiscal Year End Month
 
-```{r}
 
+``` r
 plot_20yr <- ggplot(overall_geo_avg_20yr, aes(x = as.factor(month), y = geo_avg_20yr)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   geom_hline(yintercept = overall_geo_avg_20yr_all, color = "black", linetype = "dashed", size = 1) +  # Add overall geometric average line
@@ -268,7 +308,17 @@ plot_20yr <- ggplot(overall_geo_avg_20yr, aes(x = as.factor(month), y = geo_avg_
   scale_y_continuous(labels = scales::percent_format()) +
   labs(x = "Month", y = "20-Year Average Return (2002-2022)", title = "20-Year Average Return by Month") +
   theme_reason()
+```
 
+```
+## Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+## ℹ Please use `linewidth` instead.
+## This warning is displayed once every 8 hours.
+## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
+## generated.
+```
+
+``` r
 # Plot for 10-year average returns by month with overall geometric average line and label
 plot_10yr <- ggplot(overall_geo_avg_10yr, aes(x = as.factor(month), y = geo_avg_10yr)) +
   geom_bar(stat = "identity", fill = "orange") +
@@ -284,8 +334,10 @@ plot_10yr <- ggplot(overall_geo_avg_10yr, aes(x = as.factor(month), y = geo_avg_
 grid.arrange(plot_20yr, plot_10yr, ncol = 2)
 ```
 
-```{r}
+![](FYEnd_files/figure-html/unnamed-chunk-10-1.png)<!-- -->
 
+
+``` r
 plot_20yr2 <- ggplot(overall_geo_avg_20yr, aes(x = as.factor(month), y = geo_avg_20yr)) +
   geom_bar(stat = "identity", fill = "#FF6733") +
   scale_y_continuous(labels = scales::percent_format()) +
@@ -305,9 +357,12 @@ plot_10yr2 <- ggplot(overall_geo_avg_10yr, aes(x = as.factor(month), y = geo_avg
 G3 <- grid.arrange(plot_20yr2, plot_10yr2, ncol = 2)
 ```
 
+![](FYEnd_files/figure-html/unnamed-chunk-11-1.png)<!-- -->
+
 # 3.3 Average 10 and 20 year Returns by Fiscal Year End Month Cohort   
 
-```{r}
+
+``` r
 average_returns_summary <- overall_geo_avg_10yr %>%  # Changed to geometric averages
   rename("10-Year Avg Return" = geo_avg_10yr) %>%
   left_join(overall_geo_avg_20yr %>% rename("20-Year Avg Return" = geo_avg_20yr), by = "month") %>%
@@ -323,8 +378,54 @@ average_returns_summary %>%
                format = "html",
                caption = "Average Returns per Fiscal Year-End Month (10-Year and 20-Year Basis)") %>%
   kableExtra::kable_styling("striped", full_width = F)  # Optional styling for better visualization
-
-
 ```
+
+<table class="table table-striped" style="width: auto !important; margin-left: auto; margin-right: auto;">
+<caption>Average Returns per Fiscal Year-End Month (10-Year and 20-Year Basis)</caption>
+ <thead>
+  <tr>
+   <th style="text-align:right;"> Fiscal Year-End Month </th>
+   <th style="text-align:right;"> 10-Year Average Return (%) </th>
+   <th style="text-align:right;"> 20-Year Average Return (%) </th>
+  </tr>
+ </thead>
+<tbody>
+  <tr>
+   <td style="text-align:right;"> 3 </td>
+   <td style="text-align:right;"> 9.55 </td>
+   <td style="text-align:right;"> 7.74 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;"> 4 </td>
+   <td style="text-align:right;"> 7.15 </td>
+   <td style="text-align:right;"> 6.10 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;"> 6 </td>
+   <td style="text-align:right;"> 8.45 </td>
+   <td style="text-align:right;"> 6.81 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;"> 7 </td>
+   <td style="text-align:right;"> 8.00 </td>
+   <td style="text-align:right;"> 6.33 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;"> 8 </td>
+   <td style="text-align:right;"> 8.12 </td>
+   <td style="text-align:right;"> 6.87 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;"> 9 </td>
+   <td style="text-align:right;"> 8.23 </td>
+   <td style="text-align:right;"> 6.87 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;"> 12 </td>
+   <td style="text-align:right;"> 7.14 </td>
+   <td style="text-align:right;"> 6.34 </td>
+  </tr>
+</tbody>
+</table>
 
 
