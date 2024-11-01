@@ -251,8 +251,8 @@ return_national_fye <- combined_data_clean %>%
   filter(!is.na(mva)) %>%
   group_by(month, fye) %>%
   summarise(
-    national_return = weighted.mean(return, w = mva, na.rm = TRUE),
-    national_ARR = weighted.mean(arr, w = mva, na.rm = TRUE),
+    national_return = mean(return, na.rm = TRUE),  # Changed to simple mean for unweighted average
+    national_ARR = mean(arr, na.rm = TRUE),  # Changed to simple mean for unweighted average
     .groups = "drop"  # Override the default grouping behavior
   ) %>%
   ungroup()
@@ -260,6 +260,7 @@ return_national_fye <- combined_data_clean %>%
 # Convert 'fye' to Date format
 return_national_fye <- return_national_fye %>%
   mutate(fye = as.Date(fye))
+
 return_10yr_filtered <- return_national_fye %>%
   filter(fye >= as.Date("2013-01-01") & fye <= as.Date("2022-12-31"))
 
@@ -284,7 +285,7 @@ print(paste("Overall 10-Year Geometric Average Return (2013-2022):", round(overa
 ```
 
 ```
-## [1] "Overall 10-Year Geometric Average Return (2013-2022): 8.09 %"
+## [1] "Overall 10-Year Geometric Average Return (2013-2022): 7.75 %"
 ```
 
 ``` r
@@ -292,7 +293,7 @@ print(paste("Overall 20-Year Geometric Average Return (2002-2022):", round(overa
 ```
 
 ```
-## [1] "Overall 20-Year Geometric Average Return (2002-2022): 6.72 %"
+## [1] "Overall 20-Year Geometric Average Return (2002-2022): 6.55 %"
 ```
 
 
@@ -397,33 +398,33 @@ average_returns_summary %>%
   </tr>
   <tr>
    <td style="text-align:right;"> 4 </td>
-   <td style="text-align:right;"> 7.15 </td>
-   <td style="text-align:right;"> 6.10 </td>
+   <td style="text-align:right;"> 7.07 </td>
+   <td style="text-align:right;"> 6.01 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 6 </td>
-   <td style="text-align:right;"> 8.45 </td>
-   <td style="text-align:right;"> 6.81 </td>
+   <td style="text-align:right;"> 8.05 </td>
+   <td style="text-align:right;"> 6.60 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 7 </td>
-   <td style="text-align:right;"> 8.00 </td>
-   <td style="text-align:right;"> 6.33 </td>
+   <td style="text-align:right;"> 8.10 </td>
+   <td style="text-align:right;"> 6.25 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 8 </td>
-   <td style="text-align:right;"> 8.12 </td>
-   <td style="text-align:right;"> 6.87 </td>
+   <td style="text-align:right;"> 7.55 </td>
+   <td style="text-align:right;"> 6.61 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 9 </td>
-   <td style="text-align:right;"> 8.23 </td>
-   <td style="text-align:right;"> 6.87 </td>
+   <td style="text-align:right;"> 7.06 </td>
+   <td style="text-align:right;"> 6.45 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 12 </td>
-   <td style="text-align:right;"> 7.14 </td>
-   <td style="text-align:right;"> 6.34 </td>
+   <td style="text-align:right;"> 6.87 </td>
+   <td style="text-align:right;"> 6.18 </td>
   </tr>
 </tbody>
 </table>
